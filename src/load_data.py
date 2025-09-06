@@ -2,6 +2,8 @@
 
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+
 
 columns = [
     "duration",
@@ -47,6 +49,18 @@ columns = [
     "dst_host_srv_rerror_rate",
     "label"
 ]
+useless_features = [    
+    "num_outbound_cmds",   # همیشه صفره
+    "is_host_login",       # تقریبا همیشه صفره
+    # "su_attempted",        # خیلی کم اتفاق میفته
+    # "num_shells",          # خیلی نادر
+    # "num_file_creations",  # خیلی کم استفاده
+    # "num_access_files",    # خیلی کم
+    # "root_shell",          # خیلی نادر
+    "land",                # همیشه صفر یا خیلی نادر
+    # "urgent",              # تقریبا همیشه صفر
+    # "wrong_fragment"       # خیلی نادر
+    ]
 
 def load_nsl_kdd(file_path):
 
@@ -69,43 +83,71 @@ def load_nsl_kdd(file_path):
         encoders[col] = le
 
     # ویژگی‌ها و برچسب
-    X = df.drop('label', axis=1)
+
+    X = df.drop(['label'] + useless_features, axis=1)
     y = df['label']
 
     # نرمال‌سازی
-    scaler = MinMaxScaler()
+    # scaler = MinMaxScaler()
+    # X = scaler.fit_transform(X)
+    
+    scaler = StandardScaler()
     X = scaler.fit_transform(X)
 
-    return X, y, encoders
+    return X, y, encoders, scaler
 
 
-def load_nsl_kdd_test(file_path, encoders, scaler=None):
+def load_nsl_kdd_test(file_path, encoders, scaler):
     # بارگذاری مثل قبل
     df = pd.read_csv(file_path, names=columns, sep=',', usecols=range(42))
     df.dropna(inplace=True)
     # LabelEncoder برای ستون‌های متنی
-    if encoders is None:
-        encoders = {}
-        for col in ['protocol_type', 'service', 'flag']:
-            le = LabelEncoder()
-            df[col] = le.fit_transform(df[col])
-            encoders[col] = le
-    else:
-        for col in ['protocol_type', 'service', 'flag']:
-            le = encoders[col]
-            df[col] = le.transform(df[col])
+    # if encoders is None:
+    #     encoders = {}
+    #     for col in ['protocol_type', 'service', 'flag']:
+    #         le = LabelEncoder()
+    #         df[col] = le.fit_transform(df[col])
+    #         encoders[col] = le
+    # else:
+    #     for col in ['protocol_type', 'service', 'flag']:
+    #         le = encoders[col]
+    #         df[col] = le.transform(df[col])
+
+    for col in ['protocol_type', 'service', 'flag']:
+        df[col] = encoders[col].transform(df[col])
+
+
 
     # لیبل‌ها
     df['label'] = df['label'].apply(lambda x: 'attack' if x != 'normal' else 'normal')
 
-    X = df.drop(['label'], axis=1)
+
+    X = df.drop(['label'] + useless_features, axis=1)
     y = df['label']
 
-    # نرمال‌سازی با همان اسکیلر آموزش
-    if scaler is None:
-        scaler = MinMaxScaler()
-        X = scaler.fit_transform(X)
-    else:
-        X = scaler.transform(X)
+    X = scaler.transform(X)
 
     return X, y
+
+
+# New: raw loaders returning DataFrame features to be used with ColumnTransformer/OneHotEncoder
+def load_nsl_kdd_raw(file_path):
+    df = pd.read_csv(file_path, names=columns, sep=',', usecols=range(42))
+    df.dropna(inplace=True)
+
+    df['label'] = df['label'].apply(lambda x: 'normal' if x == 'normal' else 'attack')
+
+    X_df = df.drop(['label'] + useless_features, axis=1)
+    y = df['label']
+    return X_df, y
+
+
+def load_nsl_kdd_test_raw(file_path):
+    df = pd.read_csv(file_path, names=columns, sep=',', usecols=range(42))
+    df.dropna(inplace=True)
+
+    df['label'] = df['label'].apply(lambda x: 'normal' if x == 'normal' else 'attack')
+
+    X_df = df.drop(['label'] + useless_features, axis=1)
+    y = df['label']
+    return X_df, y
