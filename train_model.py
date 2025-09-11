@@ -6,7 +6,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
-from .load_data import load_nsl_kdd_raw, load_nsl_kdd_test_raw
+from src.load_data import load_nsl_kdd_raw, load_nsl_kdd_test_raw
 
 
 def find_optimal_threshold(y_true, y_proba, pos_class_idx):
@@ -75,5 +75,3 @@ if __name__ == "__main__":
     test_path = "./data/KDDTest+.txt"
     saved = train_and_save_model(train_path, test_path)
     print(f"Saved model to: {saved}")
-
-
