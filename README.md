@@ -1,10 +1,19 @@
-# anomaly-network-traffic-detection
-Anomaly traffic detection system in the network using machine learning
+# For Run Project
+1.create venv (optional)
 
+2.install requirements from "requirements.txt"
 
-frontend run : streamlit run frontend/app.py
+3.run "python -m src.train_model"
 
-backend run : uvicorn backend.app:app --reload --port 8000
+4.you can see Accuracy and calculations of model by run python "main.py"
+
+5.run  "uvicorn backend.app:app --reload --port 8000" for backend
+
+6.run  "streamlit run frontend/app.py" for frontend
+
+7.now you can upload your csv file.
+
+8.for project test you can use "test csv files" in data folder.
 # 🛡️ Anomaly-based Intrusion Detection System using Machine Learning  
 **سیستم تشخیص نفوذ در شبکه مبتنی بر یادگیری ماشین**
 
