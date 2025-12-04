@@ -16,12 +16,6 @@
 8.for project test you can use "test csv files" in data folder.
 # 🛡️ Anomaly-based Intrusion Detection System using Machine Learning  
 **سیستم تشخیص نفوذ در شبکه مبتنی بر یادگیری ماشین**
-
-## 👤 تهیه‌کننده
-- **استاد راهنما:** دکتر فرساد زمانی بروجنی  
-- **دانشجو:** دارا صدری  
-- **سال:** ۱۴۰۴  
-
 ---
 
 ## 📘 مقدمه  
