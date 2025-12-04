@@ -52,42 +52,39 @@ columns = [
 useless_features = [    
     "num_outbound_cmds",   # همیشه صفره
     "is_host_login",       # تقریبا همیشه صفره
+    "land",                # همیشه صفر یا خیلی نادر
     # "su_attempted",        # خیلی کم اتفاق میفته
     # "num_shells",          # خیلی نادر
     # "num_file_creations",  # خیلی کم استفاده
     # "num_access_files",    # خیلی کم
     # "root_shell",          # خیلی نادر
-    "land",                # همیشه صفر یا خیلی نادر
     # "urgent",              # تقریبا همیشه صفر
     # "wrong_fragment"       # خیلی نادر
+    "dst_host_diff_srv_rate",
+    "hot",
+    "dst_host_srv_count",
+    "count"
     ]
 
 def load_nsl_kdd(file_path):
 
         
-    # خواندن فایل CSV که با "," جدا شده + نادیده گرفتن ستون اضافی (difficulty)
+    # difficulty
     df = pd.read_csv(file_path, names=columns, sep=',', usecols=range(42))
-
-        # حذف ردیف‌های ناقص
     df.dropna(inplace=True)
 
-    
-    # برچسب‌ها: normal / attack
+
     df['label'] = df['label'].apply(lambda x: 'normal' if x == 'normal' else 'attack')
 
-    # تبدیل categorical‌ها
+
     encoders={}
     for col in ['protocol_type', 'service', 'flag']:
         le = LabelEncoder()
         df[col] = le.fit_transform(df[col])
         encoders[col] = le
 
-    # ویژگی‌ها و برچسب
-
     X = df.drop(['label'] + useless_features, axis=1)
     y = df['label']
-
-    # نرمال‌سازی
     # scaler = MinMaxScaler()
     # X = scaler.fit_transform(X)
     
@@ -117,8 +114,6 @@ def load_nsl_kdd_test(file_path, encoders, scaler):
         df[col] = encoders[col].transform(df[col])
 
 
-
-    # لیبل‌ها
     df['label'] = df['label'].apply(lambda x: 'attack' if x != 'normal' else 'normal')
 
 
@@ -130,7 +125,7 @@ def load_nsl_kdd_test(file_path, encoders, scaler):
     return X, y
 
 
-# New: raw loaders returning DataFrame features to be used with ColumnTransformer/OneHotEncoder
+# New
 def load_nsl_kdd_raw(file_path):
     df = pd.read_csv(file_path, names=columns, sep=',', usecols=range(42))
     df.dropna(inplace=True)

@@ -4,7 +4,6 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
-from sklearn.model_selection import StratifiedKFold, cross_val_score
 import numpy as np
 import xgboost as xgb
 import lightgbm as lgb
@@ -12,11 +11,11 @@ import lightgbm as lgb
 train_path = "./data/KDDTrain+.txt"
 test_path = "./data/KDDTest+.txt"
 
-# Load raw DataFrames (no encoding/scaling yet)
+
 X_train_df, y_train = load_nsl_kdd_raw(train_path)
 X_test_df, y_test = load_nsl_kdd_test_raw(test_path)
 
-# Convert string labels to numeric for XGBoost and LightGBM
+
 from sklearn.preprocessing import LabelEncoder
 label_encoder = LabelEncoder()
 y_train_numeric = label_encoder.fit_transform(y_train)
@@ -26,7 +25,7 @@ y_test_numeric = label_encoder.transform(y_test)
 categorical_cols = ["protocol_type", "service", "flag"]
 numeric_cols = [col for col in X_train_df.columns if col not in categorical_cols]
 
-# Preprocessor: OneHot for categoricals (ignore unknowns), Standardize numerics
+# Preprocessor
 preprocessor = ColumnTransformer(
     transformers=[
         ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), categorical_cols),
@@ -35,7 +34,7 @@ preprocessor = ColumnTransformer(
     remainder="drop",
 )
 
-# Train all three models and pick the best
+# Train 
 print("Training RandomForest...")
 rf_clf = RandomForestClassifier(
     n_estimators=1000,
@@ -87,27 +86,48 @@ for name, model in models.items():
     else:
         model.fit(X_train_df, y_train)
 
-# Get probabilities for threshold tuning
+# threshold tuning
 print("Finding optimal threshold for each model...")
 
 # Find optimal threshold for each model
+# def find_optimal_threshold(y_true, y_proba, pos_class_idx):
+#     from sklearn.metrics import accuracy_score
+#     thresholds = np.arange(0.1, 0.9, 0.005)
+#     best_threshold = 0.5
+#     best_accuracy = 0
+    
+#     for threshold in thresholds:
+#         y_pred_thresh = (y_proba[:, pos_class_idx] >= threshold).astype(int)
+#         y_pred_labels = ['normal' if p == 0 else 'attack' for p in y_pred_thresh]
+#         accuracy = accuracy_score(y_true, y_pred_labels)
+#         if accuracy > best_accuracy:
+#             best_accuracy = accuracy
+#             best_threshold = threshold
+    
+#     return best_threshold, best_accuracy
+
 def find_optimal_threshold(y_true, y_proba, pos_class_idx):
     from sklearn.metrics import accuracy_score
     thresholds = np.arange(0.1, 0.9, 0.005)
     best_threshold = 0.5
-    best_accuracy = 0
-    
+    best_accuracy = -1
+
+    # unify y_true to numeric 0/1
+    if np.array(y_true).dtype.kind in "OUS":  # object/string
+        y_true_num = np.array([0 if v == "normal" else 1 for v in y_true])
+    else:
+        y_true_num = np.array(y_true, dtype=int)
+
     for threshold in thresholds:
-        y_pred_thresh = (y_proba[:, pos_class_idx] >= threshold).astype(int)
-        y_pred_labels = ['normal' if p == 0 else 'attack' for p in y_pred_thresh]
-        accuracy = accuracy_score(y_true, y_pred_labels)
+        y_pred_num = (y_proba[:, pos_class_idx] >= threshold).astype(int)
+        accuracy = accuracy_score(y_true_num, y_pred_num)
         if accuracy > best_accuracy:
             best_accuracy = accuracy
             best_threshold = threshold
-    
     return best_threshold, best_accuracy
 
-# Test all models and pick the best
+
+# Test 
 best_model_name = None
 best_accuracy = 0
 best_threshold = 0.5
@@ -138,14 +158,14 @@ for name, model in models.items():
 
 print(f"\nBest model: {best_model_name} with accuracy: {best_accuracy:.4f}")
 
-# Use the best model
+# best model
 pipeline = models[best_model_name]
 y_proba, attack_idx = best_predictions
 
-# Predict with optimal threshold
+
 y_pred = (y_proba[:, attack_idx] >= best_threshold).astype(int)
 
-# Convert predictions back to string labels
+
 if best_model_name in ['XGBoost', 'LightGBM']:
     y_pred_labels = label_encoder.inverse_transform(y_pred)
 else:
@@ -167,27 +187,23 @@ print(classification_report(
 
 # ROC-AUC (binary: positive class is 'attack')
 try:
-    if best_model_name in ['XGBoost', 'LightGBM']:
-        auc = roc_auc_score((y_test == "attack").astype(int), y_proba[:, attack_idx])
-    else:
-        auc = roc_auc_score((y_test == "attack").astype(int), y_proba[:, attack_idx])
+    auc = roc_auc_score((y_test == "attack").astype(int), y_proba[:, attack_idx])
     print(f"\nROC-AUC: {auc:.4f}")
 except Exception as e:
     print(f"\nROC-AUC unavailable: {e}")
 
-# Calculate error rate
+# error rate
 from sklearn.metrics import accuracy_score
 accuracy = accuracy_score(y_test, y_pred_labels)
 error_rate = 1 - accuracy
 print(f"\nAccuracy: {accuracy:.4f}")
 print(f"Error Rate: {error_rate:.4f} ({error_rate*100:.2f}%)")
 
-# Feature importances (mapped back to transformed feature names)
+# Feature importances
 try:
     import numpy as np
 
     pre = pipeline.named_steps["pre"]
-    # get_feature_names_out is available in sklearn>=1.0 for ColumnTransformer
     feature_names = pre.get_feature_names_out()
     importances = pipeline.named_steps["clf"].feature_importances_
     idx = np.argsort(importances)[::-1][:20]
